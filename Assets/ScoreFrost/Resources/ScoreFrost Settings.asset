@@ -12,14 +12,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4411eef9f252cf344ab3eed5c11699ef, type: 3}
   m_Name: ScoreFrost Settings
   m_EditorClassIdentifier: Assembly-CSharp::ScoreFrost.Settings
-  serverUrl: https://api.scorefrost.com
-  port: 8080
-  apiVersion: v1
-  gameId: 
-  apiKey: 
-  connectionTimeoutSeconds: 30
-  requestTimeoutSeconds: 10
-  maxRetryAttempts: 3
-  useSSL: 1
-  enableLogging: 1
-  enableVerboseLogging: 0
+  _serverUrl: localhost
+  _port: 80
+  _useSSL: 0
+  _apiVersion: v1
+  _gameId: scorefrost_example
+  _scoreTypes:
+  - points
+  - lives
+  _apiKey: 
+  _connectionTimeoutSeconds: 30
+  _requestTimeoutSeconds: 10
+  _maxRetryAttempts: 3
+  _enableLogging: 1
+  _enableVerboseLogging: 0
