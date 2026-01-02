@@ -2,10 +2,17 @@ using System;
 using Newtonsoft.Json;
 
 namespace ScoreFrostSDK.Models {
+	/// <summary>
+	/// Body of an HTTP request to the ScoreFrost API backend.
+	/// </summary>
+	[Serializable]
 	public class ApiRequest {
-		[JsonProperty("api_key")] public string ApiKey { get; set; }
 	}
 
+	/// <summary>
+	/// Body of an HTTP response from the ScoreFrost API backend.
+	/// </summary>
+	[Serializable]
 	public class ApiResponse {
 		[JsonProperty("message")] public string Message { get; set; }
 	}

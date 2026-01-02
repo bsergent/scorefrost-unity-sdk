@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: ScoreFrost Settings
   m_EditorClassIdentifier: Assembly-CSharp::ScoreFrost.Settings
   _serverUrl: localhost
-  _port: 80
+  _port: 8080
   _useSSL: 0
   _apiVersion: v1
   _gameId: scorefrost_example
@@ -21,8 +21,8 @@ MonoBehaviour:
   - points
   - lives
   _apiKey: 
-  _connectionTimeoutSeconds: 30
   _requestTimeoutSeconds: 10
   _maxRetryAttempts: 3
-  _enableLogging: 1
-  _enableVerboseLogging: 0
+  _logInfo: 1
+  _logWarnings: 1
+  _logErrors: 1

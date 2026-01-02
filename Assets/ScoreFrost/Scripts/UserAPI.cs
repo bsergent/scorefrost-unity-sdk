@@ -1,34 +1,81 @@
 using System;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 using ScoreFrostSDK.Models;
 using UnityEngine;
 
 namespace ScoreFrostSDK {
 	/// <summary>
-	/// API for user-related operations
+	/// API for user-related operations.
 	/// </summary>
 	public sealed class UserAPI {
 		/// <summary>
-		/// Internal constructor - only the ScoreFrost SDK can create instances
+		/// Internal constructor - only the ScoreFrost SDK can create instances.
 		/// </summary>
 		internal UserAPI() {
 		}
 
+		#region Credentials
+		private const string PrefId = "ScoreFrost.UserId";
+		[SerializeField] private string _id;
 		/// <summary>
-		/// Gets or creates a user. If no stored credentials exist, creates a new user.
-		/// If credentials exist, returns the current user information.
+		/// Unique identifier for the current user.
 		/// </summary>
-		/// <returns>User information</returns>
-		public async Task<UserFull> GetOrCreateAsync() {
-			// TODO: Check for stored credentials first
-			// If no credentials, create new user and store credentials
-			// If credentials exist, get current user info
-			Debug.LogWarning("GetOrCreateAsync not yet implemented");
-			return new UserFull();
+		public string Id {
+			get => PlayerPrefs.GetString(PrefId, string.Empty);
+			set => PlayerPrefs.SetString(PrefId, _id = value);
+		}
+
+		private const string PrefApiKey = "ScoreFrost.ApiKey";
+		[SerializeField] private string _apiKey;
+		/// <summary>
+		/// API key for authenticating requests on behalf of the user.
+		/// </summary>
+		public string ApiKey {
+			get => PlayerPrefs.GetString(PrefApiKey, string.Empty);
+			set => PlayerPrefs.SetString(PrefApiKey, _apiKey = value);
 		}
 
 		/// <summary>
-		/// Sets the display name for the current authenticated user
+		/// Whether the user has been provisioned with an ID and API key.
+		/// </summary>
+		public bool Provisioned => !string.IsNullOrEmpty(Id) && !string.IsNullOrEmpty(ApiKey);
+		#endregion
+
+		private const string PrefCachedSelf = "ScoreFrost.UserFull";
+		[SerializeField] private UserFull _cachedSelf;
+		/// <summary>
+		/// Cached user information for the current user. Null if not cached.
+		/// </summary>
+		public UserFull CachedSelf {
+			get => JsonConvert.DeserializeObject<UserFull>(PlayerPrefs.GetString(PrefCachedSelf, "null"));
+			set => PlayerPrefs.SetString(PrefCachedSelf, JsonConvert.SerializeObject(_cachedSelf = value));
+		}
+
+		/// <summary>
+		/// If provisioned, authenticates the user by fetching their details from the server.
+		/// If not provisioned, creates a new user and stores the credentials.
+		/// Stores the returned user details in <see cref="CachedSelf"/>.
+		/// </summary>
+		public async Task FetchSelfAsync() {
+			// Show initial values in inspector
+			_id = Id;
+			_apiKey = ApiKey;
+
+			if (Provisioned) {
+				// Authenticate existing user
+				CachedSelf = await ScoreFrost.Get<UserFull>($"user/{Id}/details");
+			} else {
+				// Create new user
+				var userNew = await ScoreFrost.Post<UserNew>("user");
+				Id = userNew.Id;
+				ApiKey = userNew.ApiKey;
+				CachedSelf = userNew;
+			}
+		}
+
+		/// <summary>
+		/// Sets the display name for the current authenticated user.
 		/// </summary>
 		/// <param name="newName">New display name (3-20 characters, alphanumeric plus spaces, underscores, hyphens)</param>
 		/// <returns>Display name update response</returns>
@@ -43,7 +90,7 @@ namespace ScoreFrostSDK {
 		}
 
 		/// <summary>
-		/// Gets user information by user ID or friend code
+		/// Gets user information by user ID or friend code.
 		/// </summary>
 		/// <param name="userIdOrFriendCode">User ID (UUID) or 6-character friend code</param>
 		/// <returns>User information</returns>
@@ -59,27 +106,7 @@ namespace ScoreFrostSDK {
 		}
 
 		/// <summary>
-		/// Gets the current authenticated user's information
-		/// </summary>
-		/// <returns>Current user information</returns>
-		public async Task<UserFull> GetCurrentAsync() {
-			// TODO: Get current user ID from stored credentials and call GetAsync
-			Debug.LogWarning("GetCurrentAsync not yet implemented");
-			return new UserFull();
-		}
-
-		/// <summary>
-		/// Creates a new user with auto-generated credentials
-		/// </summary>
-		/// <returns>User creation response with credentials</returns>
-		public async Task<UserFull> CreateAsync() {
-			// TODO: Implement HTTP POST request to /user
-			Debug.LogWarning("CreateAsync not yet implemented");
-			return new UserFull();
-		}
-
-		/// <summary>
-		/// Validates a display name format before submission
+		/// Validates a display name format before submission.
 		/// </summary>
 		/// <param name="displayName">Display name to validate</param>
 		/// <returns>True if valid, false otherwise</returns>

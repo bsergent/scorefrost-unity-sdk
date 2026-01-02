@@ -1,4 +1,9 @@
+using System.Net.Http;
+using System.Threading.Tasks;
+using Newtonsoft.Json;
+using ScoreFrostSDK.Models;
 using UnityEngine;
+using UnityEngine.Networking;
 
 namespace ScoreFrostSDK {
 	/// <summary>
@@ -11,10 +16,10 @@ namespace ScoreFrostSDK {
 		/// </summary>
 		public static bool Initialized => _instance != null && _settings != null;
 
-		private UserAPI _user = new();
+		[SerializeReference] private UserAPI _user = new();
 		public static UserAPI User => _instance._user;
 
-		private ScoreAPI _score = new();
+		[SerializeReference] private ScoreAPI _score = new();
 		public static ScoreAPI Score => _instance._score;
 
 		private static Settings _settings;
@@ -31,27 +36,117 @@ namespace ScoreFrostSDK {
 
 			_instance = this;
 			DontDestroyOnLoad(gameObject);
-
-			// Try to load settings from Resources
-			_settings = Resources.Load<Settings>("ScoreFrost Settings");
-			if (_settings == null) {
-				Debug.LogWarning("[ScoreFrost] No settings found in Resources/ScoreFrost Settings.");
-				// TODO Generate default settings file?
-			} else if (_settings != null && _settings.ValidateSettings()) {
-				Debug.Log("[ScoreFrost] Initialized successfully.");
-			} else {
-				Debug.LogError("[ScoreFrost] Initialization failed - invalid settings.");
-			}
 		}
 
 		/// <summary>
 		/// Initializes the ScoreFrost SDK. Call this before using any static APIs.
 		/// </summary>
-		public static void Initialize() {
-			if (_instance == null) {
-				GameObject go = new("ScoreFrost SDK");
-				go.AddComponent<ScoreFrost>();
+		public static async Task InitializeAsync() {
+			if (Initialized) return;
+
+			GameObject go = new("ScoreFrost SDK");
+			go.AddComponent<ScoreFrost>();
+
+			// Try to load settings from Resources
+			_settings = Resources.Load<Settings>("ScoreFrost Settings");
+			if (_settings == null) {
+				Log(LogType.Warning, "No settings found in Resources/ScoreFrost Settings.");
+				// TODO Generate default settings file?
+			} else if (_settings != null && _settings.ValidateSettings()) {
+				Log(LogType.Log, "Initialized successfully.");
+			} else {
+				Log(LogType.Error, "Initialization failed - invalid settings.");
+				return;
+			}
+
+			// TODO Initialize user
+			await User.FetchSelfAsync();
+		}
+
+		internal static void Log(LogType type, string message) {
+			switch (type) {
+				case LogType.Error when Settings.EnableErrors:
+					Debug.LogError($"[ScoreFrost] {message}");
+					break;
+				case LogType.Warning when Settings.EnableWarnings:
+					Debug.LogWarning($"[ScoreFrost] {message}");
+					break;
+				default:
+					if (Settings.EnableLogging)
+						Debug.Log($"[ScoreFrost] {message}");
+					break;
 			}
 		}
+
+		#region Internal HTTP Methods
+		/// <summary>
+		/// Sends a GET request to the specified URL. Includes authorization header.
+		/// </summary>
+		internal static async Task<T> Get<T>(string url) where T : ApiResponse {
+			return await SendRequestWithRetry<T>(() => UnityWebRequest.Get(ProcessUrl(url)));
+		}
+
+		/// <summary>
+		/// Sends a POST request to the specified URL. Includes authorization header.
+		/// If a request body is provided, it is serialized as JSON.
+		/// </summary>
+		internal static async Task<T> Post<T>(string url, ApiRequest request = null) where T : ApiResponse {
+			return await SendRequestWithRetry<T>(() => {
+				var jsonBody = JsonConvert.SerializeObject(request);
+				byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(jsonBody);
+				var www = new UnityWebRequest(ProcessUrl(url), "POST") {
+					uploadHandler = new UploadHandlerRaw(bodyRaw),
+					downloadHandler = new DownloadHandlerBuffer()
+				};
+				www.SetRequestHeader("Content-Type", "application/json");
+				return www;
+			});
+		}
+
+		/// <summary>
+		/// Prepend the base API URL if the provided URL is relative.
+		/// </summary>
+		private static string ProcessUrl(string url) {
+			if (!url.StartsWith("http://") && !url.StartsWith("https://"))
+				url = $"{Settings.GetApiBaseUrl()}/{url}";
+			return url;
+		}
+
+		/// <summary>
+		/// Sends a UnityWebRequest with retry logic for transient failures.
+		/// </summary>
+		private static async Task<T> SendRequestWithRetry<T>(System.Func<UnityWebRequest> createRequest) where T : ApiResponse {
+			int attempts = 0;
+			while (attempts++ < Settings.MaxRetryAttempts) {
+				using var www = createRequest();
+				www.timeout = Settings.RequestTimeoutSeconds;
+
+				Log(LogType.Log, $"Request {www.method} {www.url} (attempt {attempts}/{Settings.MaxRetryAttempts})");
+
+				// Include api key on all requests, if available
+				if (!string.IsNullOrWhiteSpace(User.ApiKey))
+					www.SetRequestHeader("Authorization", $"Bearer {User.ApiKey}");
+
+				// Wait for request to complete
+				var operation = www.SendWebRequest();
+				while (!operation.isDone)
+					await Task.Yield();
+
+				// Retry on connection issues
+				if (www.result == UnityWebRequest.Result.ConnectionError
+						|| www.result == UnityWebRequest.Result.ProtocolError) {
+					Log(LogType.Warning, $"Request failed (attempt {attempts}/{Settings.MaxRetryAttempts}): {www.error}");
+					continue;
+				}
+
+				// Success or non-retryable error
+				var jsonResponse = www.downloadHandler.text;
+				Log(LogType.Log, $"Response {jsonResponse}");
+				return JsonConvert.DeserializeObject<T>(jsonResponse);
+			}
+
+			throw new HttpRequestException($"Max retry attempts ({Settings.MaxRetryAttempts}) reached for request.");
+		}
+		#endregion
 	}
 }

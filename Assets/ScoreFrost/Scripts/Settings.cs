@@ -20,18 +20,20 @@ namespace ScoreFrostSDK {
 		public string ApiKey => _apiKey;
 
 		[Header("Connection Settings")]
-		[SerializeField, Min(1)] private int _connectionTimeoutSeconds = 30;
-		public int ConnectionTimeoutSeconds => _connectionTimeoutSeconds;
+		// [SerializeField, Min(1)] private int _connectionTimeoutSeconds = 30;
+		// public int ConnectionTimeoutSeconds => _connectionTimeoutSeconds;
 		[SerializeField, Min(1)] private int _requestTimeoutSeconds = 10;
 		public int RequestTimeoutSeconds => _requestTimeoutSeconds;
 		[SerializeField] private int _maxRetryAttempts = 3;
 		public int MaxRetryAttempts => _maxRetryAttempts;
 
 		[Header("Debug")]
-		[SerializeField] private bool _enableLogging = true;
-		public bool EnableLogging => _enableLogging;
-		[SerializeField] private bool _enableVerboseLogging = false;
-		public bool EnableVerboseLogging => _enableVerboseLogging;
+		[SerializeField] private bool _logInfo = true;
+		public bool EnableLogging => _logInfo;
+		[SerializeField] private bool _logWarnings = true;
+		public bool EnableWarnings => _logWarnings;
+		[SerializeField] private bool _logErrors = true;
+		public bool EnableErrors => _logErrors;
 
 		/// <summary>
 		/// Gets the full API base URL including protocol, server, port, and API version

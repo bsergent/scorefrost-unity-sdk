@@ -10,7 +10,7 @@ public class ScoreFrostExample : MonoBehaviour {
 	
 	private async void Start() {
 		// Initialize the SDK
-		ScoreFrost.Initialize();
+		await ScoreFrost.InitializeAsync();
 		
 		// Wait a frame to ensure initialization
 		await Task.Yield();
@@ -22,8 +22,10 @@ public class ScoreFrostExample : MonoBehaviour {
 	private async Task ExampleUsage() {
 		try {
 			// User operations
-			var user = await ScoreFrost.User.GetOrCreateAsync();
+			var user = ScoreFrost.User.CachedSelf;
 			Debug.Log($"[ScoreFrost] Current user: {user.DisplayName} ({user.FriendCode})");
+
+			return;
 			
 			// Set display name
 			await ScoreFrost.User.SetDisplayNameAsync("CoolPlayer123");
