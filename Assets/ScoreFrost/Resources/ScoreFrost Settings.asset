@@ -16,7 +16,7 @@ MonoBehaviour:
   _port: 8080
   _useSSL: 0
   _apiVersion: v1
-  _gameId: scorefrost_example
+  _gameId: us.hexfrost.scorefrost.example
   _scoreTypes:
   - points
   - lives

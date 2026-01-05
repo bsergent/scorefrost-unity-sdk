@@ -14,6 +14,7 @@ namespace ScoreFrostSDK.Models {
 	/// </summary>
 	[Serializable]
 	public class ApiResponse {
+		[JsonProperty("status_code")] public int StatusCode { get; set; }
 		[JsonProperty("message")] public string Message { get; set; }
 	}
 

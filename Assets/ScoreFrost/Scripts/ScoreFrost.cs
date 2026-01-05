@@ -59,10 +59,11 @@ namespace ScoreFrostSDK {
 				return;
 			}
 
-			// TODO Initialize user
-			await User.FetchSelfAsync();
+			// Initialize user
+			await User.LoginAsync();
 		}
 
+		[HideInCallstack]
 		internal static void Log(LogType type, string message) {
 			switch (type) {
 				case LogType.Error when Settings.EnableErrors:
@@ -133,19 +134,33 @@ namespace ScoreFrostSDK {
 					await Task.Yield();
 
 				// Retry on connection issues
-				if (www.result == UnityWebRequest.Result.ConnectionError
-						|| www.result == UnityWebRequest.Result.ProtocolError) {
+				if (www.result == UnityWebRequest.Result.ConnectionError || IsServerError(www)) {
 					Log(LogType.Warning, $"Request failed (attempt {attempts}/{Settings.MaxRetryAttempts}): {www.error}");
 					continue;
 				}
 
-				// Success or non-retryable error
 				var jsonResponse = www.downloadHandler.text;
 				Log(LogType.Log, $"Response {jsonResponse}");
-				return JsonConvert.DeserializeObject<T>(jsonResponse);
+
+				// Error with request
+				if (IsRequestError(www))
+					throw new HttpRequestException($"{www.responseCode} {jsonResponse}");
+
+				// Success
+				var response = JsonConvert.DeserializeObject<T>(jsonResponse);
+				response.StatusCode = (int)www.responseCode;
+				return response;
 			}
 
 			throw new HttpRequestException($"Max retry attempts ({Settings.MaxRetryAttempts}) reached for request.");
+		}
+
+		private static bool IsRequestError(UnityWebRequest www) {
+			return www.result == UnityWebRequest.Result.ProtocolError && www.responseCode >= 400 && www.responseCode < 500;
+		}
+
+		private static bool IsServerError(UnityWebRequest www) {
+			return www.result == UnityWebRequest.Result.ProtocolError && www.responseCode >= 500 && www.responseCode < 600;
 		}
 		#endregion
 	}

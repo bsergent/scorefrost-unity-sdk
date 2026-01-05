@@ -57,20 +57,34 @@ namespace ScoreFrostSDK {
 		/// If not provisioned, creates a new user and stores the credentials.
 		/// Stores the returned user details in <see cref="CachedSelf"/>.
 		/// </summary>
-		public async Task FetchSelfAsync() {
+		public async Task LoginAsync() {
 			// Show initial values in inspector
 			_id = Id;
 			_apiKey = ApiKey;
 
-			if (Provisioned) {
-				// Authenticate existing user
-				CachedSelf = await ScoreFrost.Get<UserFull>($"user/{Id}/details");
-			} else {
-				// Create new user
-				var userNew = await ScoreFrost.Post<UserNew>("user");
-				Id = userNew.Id;
-				ApiKey = userNew.ApiKey;
-				CachedSelf = userNew;
+			try {
+				var response = await ScoreFrost.Post<UserFull>("user", new LoginRequest {
+					GameId = ScoreFrost.Settings.GameId,
+					GameVersion = Application.version
+				});
+				if (response.StatusCode == 201) {
+					// New user created
+					Id = response.Id;
+					ApiKey = response.ApiKey;
+					CachedSelf = response;
+					ScoreFrost.Log(LogType.Log, $"New user created: {response.DisplayName} ({response.FriendCode})");
+
+				} else if (response.StatusCode == 200) {
+					// Existing user authenticated
+					ScoreFrost.Log(LogType.Log, $"Existing user authenticated: {response.DisplayName} ({response.FriendCode})");
+					CachedSelf = response;
+
+				} else {
+					ScoreFrost.Log(LogType.Error, $"User login failed: {response.StatusCode} {response.Message}");
+
+				}
+			} catch (Exception ex) {
+				ScoreFrost.Log(LogType.Error, $"User login failed: {ex.Message}");
 			}
 		}
 
