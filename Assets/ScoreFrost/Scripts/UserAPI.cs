@@ -46,6 +46,7 @@ namespace ScoreFrostSDK {
 		[SerializeField] private UserFull _cachedSelf;
 		/// <summary>
 		/// Cached user information for the current user. Null if not cached.
+		/// Modifying properties of the returned value will not update the cache; set this property to update the cache.
 		/// </summary>
 		public UserFull CachedSelf {
 			get => JsonConvert.DeserializeObject<UserFull>(PlayerPrefs.GetString(PrefCachedSelf, "null"));
@@ -67,6 +68,7 @@ namespace ScoreFrostSDK {
 					GameId = ScoreFrost.Settings.GameId,
 					GameVersion = Application.version
 				});
+
 				if (response.StatusCode == 201) {
 					// New user created
 					Id = response.Id;
@@ -91,16 +93,31 @@ namespace ScoreFrostSDK {
 		/// <summary>
 		/// Sets the display name for the current authenticated user.
 		/// </summary>
-		/// <param name="newName">New display name (3-20 characters, alphanumeric plus spaces, underscores, hyphens)</param>
+		/// <param name="newName">New display name (3-32 characters, alphanumeric plus spaces, underscores, hyphens)</param>
 		/// <returns>Display name update response</returns>
-		public async Task<User> SetDisplayNameAsync(string newName) {
-			if (!ValidateDisplayName(newName)) {
-				throw new ArgumentException("Invalid display name format", nameof(newName));
-			}
+		public async Task<ApiResponse> SetDisplayNameAsync(string newName) {
+			try {
+				var response = await ScoreFrost.Put<User>("user/name", new UpdateDisplayNameRequest {
+					DisplayName = newName
+				});
 
-			// TODO: Get current user ID from stored credentials and update display name
-			Debug.LogWarning("SetDisplayNameAsync not yet implemented");
-			return new User();
+				if (response.StatusCode == 200) {
+					ScoreFrost.Log(LogType.Log, $"Display name updated to: {newName}");
+					// Update cached self
+					var cached = CachedSelf;
+					cached.DisplayName = newName;
+					CachedSelf = cached;
+					return response;
+
+				} else {
+					ScoreFrost.Log(LogType.Warning, $"Display name update failed: {response.StatusCode} {response.Message}");
+					return response;
+
+				}
+			} catch (Exception ex) {
+				ScoreFrost.Log(LogType.Error, $"Display name update failed: {ex.Message}");
+				return null;
+			}
 		}
 
 		/// <summary>
@@ -117,27 +134,6 @@ namespace ScoreFrostSDK {
 			// For now, assume it's a user ID
 			Debug.LogWarning("GetAsync not yet implemented");
 			return new UserFull();
-		}
-
-		/// <summary>
-		/// Validates a display name format before submission.
-		/// </summary>
-		/// <param name="displayName">Display name to validate</param>
-		/// <returns>True if valid, false otherwise</returns>
-		public bool ValidateDisplayName(string displayName) {
-			if (string.IsNullOrEmpty(displayName))
-				return false;
-
-			if (displayName.Length < 3 || displayName.Length > 20)
-				return false;
-
-			// Check pattern: alphanumeric plus spaces, underscores, hyphens
-			foreach (char c in displayName) {
-				if (!char.IsLetterOrDigit(c) && c != ' ' && c != '_' && c != '-')
-					return false;
-			}
-
-			return true;
 		}
 	}
 }

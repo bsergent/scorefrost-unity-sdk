@@ -105,6 +105,23 @@ namespace ScoreFrostSDK {
 		}
 
 		/// <summary>
+		/// Sends a PUT request to the specified URL. Includes authorization header.
+		/// If a request body is provided, it is serialized as JSON.
+		/// </summary>
+		internal static async Task<T> Put<T>(string url, ApiRequest request = null) where T : ApiResponse {
+			return await SendRequestWithRetry<T>(() => {
+				var jsonBody = JsonConvert.SerializeObject(request);
+				byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(jsonBody);
+				var www = new UnityWebRequest(ProcessUrl(url), "PUT") {
+					uploadHandler = new UploadHandlerRaw(bodyRaw),
+					downloadHandler = new DownloadHandlerBuffer()
+				};
+				www.SetRequestHeader("Content-Type", "application/json");
+				return www;
+			});
+		}
+
+		/// <summary>
 		/// Prepend the base API URL if the provided URL is relative.
 		/// </summary>
 		private static string ProcessUrl(string url) {
