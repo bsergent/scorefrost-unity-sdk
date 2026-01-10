@@ -125,15 +125,23 @@ namespace ScoreFrostSDK {
 		/// </summary>
 		/// <param name="userIdOrFriendCode">User ID (UUID) or 6-character friend code</param>
 		/// <returns>User information</returns>
-		public async Task<UserFull> GetAsync(string userIdOrFriendCode) {
-			if (string.IsNullOrEmpty(userIdOrFriendCode)) {
-				throw new ArgumentException("User ID or friend code cannot be null or empty", nameof(userIdOrFriendCode));
-			}
+		public async Task<User> GetAsync(string userIdOrFriendCode) {
+			try {
+				var response = await ScoreFrost.Get<User>($"user/{userIdOrFriendCode}");
 
-			// TODO: Determine if input is UUID or friend code and call appropriate endpoint
-			// For now, assume it's a user ID
-			Debug.LogWarning("GetAsync not yet implemented");
-			return new UserFull();
+				if (response.StatusCode == 200) {
+					ScoreFrost.Log(LogType.Log, $"User fetched: {response.DisplayName} ({response.FriendCode})");
+					return response;
+
+				} else {
+					ScoreFrost.Log(LogType.Warning, $"User fetch failed: {response.StatusCode} {response.Message}");
+					return response;
+
+				}
+			} catch (Exception ex) {
+				ScoreFrost.Log(LogType.Error, $"Failed to fetch user: {ex.Message}");
+				return null;
+			}
 		}
 	}
 }

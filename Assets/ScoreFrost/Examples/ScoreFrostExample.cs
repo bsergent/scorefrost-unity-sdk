@@ -23,15 +23,14 @@ public class ScoreFrostExample : MonoBehaviour {
 		try {
 			// User operations
 			var user = ScoreFrost.User.CachedSelf;
-			Debug.Log($"[ScoreFrost] Current user: {user.DisplayName} ({user.FriendCode})");
 			
 			// Set display name
 			// await ScoreFrost.User.SetDisplayNameAsync("Bebbles");
 
+			var otherUser = await ScoreFrost.User.GetAsync("0000-0000");
+			var otherUser2 = await ScoreFrost.User.GetAsync("0000-0001");
+
 			return;
-			
-			// Get user by ID or friend code
-			var otherUser = await ScoreFrost.User.GetAsync("ABC123");
 			
 			// Score operations
 			var scores = new Dictionary<string, int> {
