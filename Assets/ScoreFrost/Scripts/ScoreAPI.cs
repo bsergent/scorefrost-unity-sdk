@@ -51,8 +51,8 @@ namespace ScoreFrostSDK {
 					Scores = stringScores,
 					Solution = solution,
 				};
-				var response = await ScoreFrost.Post<ApiResponse>(
-					"score/submit",
+				var response = await ScoreFrost.Put<ApiResponse>(
+					"score",
 					request);
 
 				if (response.Success) {
