@@ -1,6 +1,7 @@
 using System;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
+using UnityEngine;
 
 namespace ScoreFrostSDK.Models {
 	[Serializable]
@@ -12,8 +13,18 @@ namespace ScoreFrostSDK.Models {
 
 	[Serializable]
 	public class UserFull : User {
-		[JsonProperty("date_time_created_utc")] public DateTime DateTimeCreatedUtc;
-		[JsonProperty("date_time_active_utc")] public DateTime DateTimeActiveUtc;
+		[JsonProperty("date_time_created_utc"), SerializeField] private string dateTimeCreatedUtc;
+		public DateTime DateTimeCreatedUtc {
+			get => DateTime.TryParse(dateTimeCreatedUtc, out var dt) ? dt : DateTime.MinValue;
+			set => dateTimeCreatedUtc = value.ToString("o");
+		}
+
+		[JsonProperty("date_time_active_utc"), SerializeField] private string dateTimeActiveUtc;
+		public DateTime DateTimeActiveUtc {
+			get => DateTime.TryParse(dateTimeActiveUtc, out var dt) ? dt : DateTime.MinValue;
+			set => dateTimeActiveUtc = value.ToString("o");
+		}
+
 		[JsonProperty("game_version")] public string GameVersion;
 		[JsonProperty("playtime_ms")] public long PlayTimeMs;
 		/// <summary>
