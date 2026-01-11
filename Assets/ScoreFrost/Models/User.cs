@@ -26,7 +26,7 @@ namespace ScoreFrostSDK.Models {
 		}
 
 		[JsonProperty("game_version")] public string GameVersion;
-		[JsonProperty("playtime_ms")] public long PlayTimeMs;
+		[JsonProperty("play_time_ms")] public long PlayTimeMs;
 		/// <summary>
 		/// API key for the user. Only returned upon creation.
 		/// </summary>

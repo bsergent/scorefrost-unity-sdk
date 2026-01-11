@@ -16,6 +16,9 @@ namespace ScoreFrostSDK {
 		/// </summary>
 		public static bool Initialized => _instance != null && _settings != null;
 
+		[SerializeField] private string _gameVersion = "unknown";
+		public static string GameVersion => _instance._gameVersion;
+
 		[SerializeReference] private UserAPI _user = new();
 		public static UserAPI User => _instance._user;
 
@@ -27,9 +30,6 @@ namespace ScoreFrostSDK {
 		/// Current SDK settings configuration
 		/// </summary>
 		public static Settings Settings => _settings;
-
-		[SerializeField] private string _gameVersion = "unknown";
-		public static string GameVersion => _instance._gameVersion;
 
 		private void Awake() {
 			if (_instance != null) {
