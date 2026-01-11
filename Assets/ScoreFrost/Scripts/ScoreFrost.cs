@@ -28,6 +28,9 @@ namespace ScoreFrostSDK {
 		/// </summary>
 		public static Settings Settings => _settings;
 
+		[SerializeField] private string _gameVersion = "unknown";
+		public static string GameVersion => _instance._gameVersion;
+
 		private void Awake() {
 			if (_instance != null) {
 				Destroy(gameObject);
@@ -41,11 +44,13 @@ namespace ScoreFrostSDK {
 		/// <summary>
 		/// Initializes the ScoreFrost SDK. Call this before using any static APIs.
 		/// </summary>
-		public static async Task InitializeAsync() {
+		public static async Task InitializeAsync(string gameVersion) {
 			if (Initialized) return;
 
 			GameObject go = new("ScoreFrost SDK");
 			go.AddComponent<ScoreFrost>();
+
+			_instance._gameVersion = gameVersion;
 
 			// Try to load settings from Resources
 			_settings = Resources.Load<Settings>("ScoreFrost Settings");
@@ -94,6 +99,7 @@ namespace ScoreFrostSDK {
 		internal static async Task<T> Post<T>(string url, ApiRequest request = null) where T : ApiResponse {
 			return await SendRequestWithRetry<T>(() => {
 				var jsonBody = JsonConvert.SerializeObject(request);
+				Log(LogType.Log, $"POST Body: {jsonBody}");
 				byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(jsonBody);
 				var www = new UnityWebRequest(ProcessUrl(url), "POST") {
 					uploadHandler = new UploadHandlerRaw(bodyRaw),
@@ -111,6 +117,7 @@ namespace ScoreFrostSDK {
 		internal static async Task<T> Put<T>(string url, ApiRequest request = null) where T : ApiResponse {
 			return await SendRequestWithRetry<T>(() => {
 				var jsonBody = JsonConvert.SerializeObject(request);
+				Log(LogType.Log, $"PUT Body: {jsonBody}");
 				byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(jsonBody);
 				var www = new UnityWebRequest(ProcessUrl(url), "PUT") {
 					uploadHandler = new UploadHandlerRaw(bodyRaw),

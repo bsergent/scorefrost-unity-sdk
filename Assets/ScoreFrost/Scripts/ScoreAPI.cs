@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using ScoreFrostSDK.Models;
 using UnityEngine;
@@ -16,65 +17,74 @@ namespace ScoreFrostSDK {
 		}
 
 		/// <summary>
-		/// Submits a solution and scores for a level
+		/// Submits a solution and scores for a level.
 		/// </summary>
-		/// <param name="solution">Base64 encoded solution data</param>
+		/// <param name="solution">Base64 encoded solution containing everything the server needs to reproduce and verify scores</param>
 		/// <param name="levelId">Unique identifier for the level</param>
 		/// <param name="levelVersion">Version number of the level</param>
 		/// <param name="gameVersion">Version of the game client</param>
-		/// <param name="solutionHash">SHA256 hash of solution + secret salt for integrity verification</param>
 		/// <param name="scores">Map of score type to score value</param>
-		/// <returns>Score submission response</returns>
-		public async Task<SolutionSubmissionResponse> SubmitSolutionAsync(
-			string solution,
+		/// <returns>API response</returns>
+		public async Task<ApiResponse> SubmitSolutionAsync(
 			string levelId,
 			int levelVersion,
-			string gameVersion,
-			string solutionHash,
-			Dictionary<string, int> scores) {
-			
-			if (string.IsNullOrEmpty(solution)) {
-				throw new ArgumentException("Solution cannot be null or empty", nameof(solution));
-			}
-			if (string.IsNullOrEmpty(levelId)) {
-				throw new ArgumentException("Level ID cannot be null or empty", nameof(levelId));
-			}
-			if (string.IsNullOrEmpty(gameVersion)) {
-				throw new ArgumentException("Game version cannot be null or empty", nameof(gameVersion));
-			}
-			if (string.IsNullOrEmpty(solutionHash)) {
-				throw new ArgumentException("Solution hash cannot be null or empty", nameof(solutionHash));
-			}
-			if (scores == null || scores.Count == 0) {
-				throw new ArgumentException("Scores cannot be null or empty", nameof(scores));
+			string solution,
+			Dictionary<Enum, int> scores) {
+
+			// Ensure solution string is valid base64
+			try {
+				Convert.FromBase64String(solution);
+			} catch (FormatException) {
+				throw new ArgumentException("Invalid base64 solution", nameof(solution));
 			}
 
-			var request = new SolutionSubmissionRequest {
-				Solution = solution,
-				LevelId = levelId,
-				LevelVersion = levelVersion,
-				GameVersion = gameVersion,
-				SolutionHash = solutionHash,
-				Scores = scores
-			};
+			try {
+				// Convert enum keys to snake_case string keys
+				var stringScores = scores?.ToDictionary(
+					kvp => PascalToSnakeCase(kvp.Key.ToString()),
+					kvp => kvp.Value);
 
-			// TODO: Implement HTTP POST request to /score/submit
-			Debug.LogWarning("SubmitSolutionAsync not yet implemented");
-			return new SolutionSubmissionResponse { Success = false, Message = "Not implemented" };
+				var request = new ScoreSubmissionRequest {
+					LevelId = levelId,
+					LevelVersion = levelVersion,
+					GameVersion = ScoreFrost.GameVersion,
+					Scores = stringScores,
+					Solution = solution,
+				};
+				var response = await ScoreFrost.Post<ApiResponse>(
+					"score/submit",
+					request);
+
+				if (response.Success) {
+					var hash = request.SolutionHash;
+					if (hash.Length > 8)
+						hash = hash[0..8];
+					ScoreFrost.Log(LogType.Log, $"Submitted solution: {hash}");
+					return response;
+
+				} else {
+					ScoreFrost.Log(LogType.Warning, $"Failed to submit solution: {response.StatusCode} {response.Message}");
+					return response;
+
+				}
+			} catch (Exception ex) {
+				ScoreFrost.Log(LogType.Error, $"Failed to submit solution: {ex.Message}");
+				return null;
+			}
 		}
 
 		/// <summary>
-		/// Gets the current user's best scores for a specific level
+		/// Gets the current user's best scores for a specific level.
 		/// </summary>
 		/// <param name="levelId">Level identifier</param>
 		/// <param name="levelVersion">Level version (optional, defaults to latest)</param>
 		/// <param name="scoreType">Filter by specific score type (optional)</param>
 		/// <returns>Best score entries for the level</returns>
-		public async Task<BestScoreEntry[]> GetBestScoresForLevelAsync(
+		public async Task<LeaderboardEntry[]> GetBestScoresForLevelAsync(
 			string levelId,
 			int? levelVersion = null,
 			string scoreType = null) {
-			
+
 			if (string.IsNullOrEmpty(levelId)) {
 				throw new ArgumentException("Level ID cannot be null or empty", nameof(levelId));
 			}
@@ -82,27 +92,27 @@ namespace ScoreFrostSDK {
 			string levelSpec = levelVersion.HasValue ? $"{levelId}.{levelVersion}" : levelId;
 			var response = await GetBestScoresAsync(levelSpec, scoreType);
 
-			return response.Scores ?? new BestScoreEntry[0];
+			return response.Scores ?? new LeaderboardEntry[0];
 		}
 
 		/// <summary>
-		/// Gets the current user's best score for a specific level and score type
+		/// Gets the current user's best score for a specific level and score type.
 		/// </summary>
 		/// <param name="levelId">Level identifier</param>
 		/// <param name="levelVersion">Level version (optional, defaults to latest)</param>
 		/// <param name="scoreType">Score type to retrieve</param>
 		/// <returns>Best score entry or null if not found</returns>
-		public async Task<BestScoreEntry> GetBestScoreForLevelAsync(
+		public async Task<LeaderboardEntry> GetBestScoreForLevelAsync(
 			string levelId,
 			int? levelVersion = null,
 			string scoreType = null) {
-			
+
 			var scores = await GetBestScoresForLevelAsync(levelId, levelVersion, scoreType);
 			return scores.Length > 0 ? scores[0] : null;
 		}
 
 		/// <summary>
-		/// Retrieves the authenticated user's best scores
+		/// Retrieves the authenticated user's best scores.
 		/// </summary>
 		/// <param name="levels">Comma-separated list of level specifications (optional)</param>
 		/// <param name="scoreType">Filter by specific score type (optional)</param>
@@ -112,11 +122,11 @@ namespace ScoreFrostSDK {
 			string scoreType = null) {
 			// TODO: Implement HTTP GET request to /score/best with query parameters
 			Debug.LogWarning("GetBestScoresAsync not yet implemented");
-			return new BestScoresResponse { Scores = new BestScoreEntry[0], Count = 0, Scope = "user" };
+			return new BestScoresResponse { Scores = new LeaderboardEntry[0], Count = 0, Scope = "user" };
 		}
 
 		/// <summary>
-		/// Retrieves leaderboard with top scores per level and score type
+		/// Retrieves leaderboard with top scores per level and score type.
 		/// </summary>
 		/// <param name="levels">Comma-separated list of level specifications (optional)</param>
 		/// <param name="scoreType">Filter by specific score type (optional)</param>
@@ -131,7 +141,7 @@ namespace ScoreFrostSDK {
 			// TODO: Implement HTTP GET request to /score/leaderboard with query parameters
 			Debug.LogWarning("GetLeaderboardAsync not yet implemented");
 			return new LeaderboardResponse {
-				Scores = new LeaderboardEntry[0],
+				Entries = new LeaderboardEntry[0],
 				Count = 0,
 				Scope = "global",
 				Pagination = new PaginationInfo { Offset = offset, Size = size, Total = 0 }
@@ -139,7 +149,7 @@ namespace ScoreFrostSDK {
 		}
 
 		/// <summary>
-		/// Gets the leaderboard rank for a specific user on a level
+		/// Gets the leaderboard rank for a specific user on a level.
 		/// </summary>
 		/// <param name="levelId">Level identifier</param>
 		/// <param name="levelVersion">Level version (optional, defaults to latest)</param>
@@ -154,6 +164,23 @@ namespace ScoreFrostSDK {
 			// TODO: Implement by fetching leaderboard and finding user position
 			Debug.LogWarning("GetUserRankAsync not yet implemented");
 			return -1;
+		}
+
+		/// <summary>
+		/// Converts an enum name from PascalCase to snake_case.
+		/// </summary>
+		private string PascalToSnakeCase(string enumName) {
+			if (string.IsNullOrEmpty(enumName))
+				return enumName;
+
+			string result = "";
+			for (int i = 0; i < enumName.Length; i++) {
+				char c = enumName[i];
+				if (i > 0 && char.IsUpper(c))
+					result += "_";
+				result += char.ToLower(c);
+			}
+			return result;
 		}
 	}
 }

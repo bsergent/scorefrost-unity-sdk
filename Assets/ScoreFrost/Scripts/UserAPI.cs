@@ -66,7 +66,7 @@ namespace ScoreFrostSDK {
 			try {
 				var response = await ScoreFrost.Post<UserFull>("user", new LoginRequest {
 					GameId = ScoreFrost.Settings.GameId,
-					GameVersion = Application.version
+					GameVersion = ScoreFrost.GameVersion,
 				});
 
 				if (response.StatusCode == 201) {
@@ -101,7 +101,7 @@ namespace ScoreFrostSDK {
 					DisplayName = newName
 				});
 
-				if (response.StatusCode == 200) {
+				if (response.Success) {
 					ScoreFrost.Log(LogType.Log, $"Display name updated to: {newName}");
 					// Update cached self
 					var cached = CachedSelf;
@@ -129,7 +129,7 @@ namespace ScoreFrostSDK {
 			try {
 				var response = await ScoreFrost.Get<User>($"user/{userIdOrFriendCode}");
 
-				if (response.StatusCode == 200) {
+				if (response.Success) {
 					ScoreFrost.Log(LogType.Log, $"User fetched: {response.DisplayName} ({response.FriendCode})");
 					return response;
 

@@ -12,12 +12,9 @@ namespace ScoreFrostSDK {
 		[Header("Game")]
 		[SerializeField] private string _gameId = "";
 		public string GameId => _gameId;
-		[SerializeField] private string[] _scoreTypes;
-		public string[] ScoreTypes => _scoreTypes;
-
-		[Header("Authentication")]
-		[SerializeField] private string _apiKey = "";
-		public string ApiKey => _apiKey;
+		[Tooltip("Secret salt used for solution integrity hashing")]
+		[SerializeField] private string _secretSalt = "";
+		public string SecretSalt => _secretSalt;
 
 		[Header("Connection Settings")]
 		// [SerializeField, Min(1)] private int _connectionTimeoutSeconds = 30;
@@ -53,8 +50,8 @@ namespace ScoreFrostSDK {
 				return false;
 			}
 
-			if (string.IsNullOrEmpty(_apiKey)) {
-				Debug.LogWarning("ScoreFrost Settings: API Key is not set");
+			if (string.IsNullOrEmpty(_secretSalt)) {
+				Debug.LogWarning("ScoreFrost Settings: Secret salt is not set");
 			}
 
 			if (string.IsNullOrEmpty(_gameId)) {

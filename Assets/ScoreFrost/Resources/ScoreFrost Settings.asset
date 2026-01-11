@@ -17,10 +17,7 @@ MonoBehaviour:
   _useSSL: 0
   _apiVersion: v1
   _gameId: us.hexfrost.scorefrost.example
-  _scoreTypes:
-  - points
-  - lives
-  _apiKey: 
+  _secretSalt: your_secret_salt_change_in_production
   _requestTimeoutSeconds: 10
   _maxRetryAttempts: 3
   _logInfo: 1
